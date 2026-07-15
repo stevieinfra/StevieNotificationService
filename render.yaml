@@ -1,0 +1,29 @@
+# Render deploy config. Connect the repo in Render and it reads this.
+# Secrets (sync: false) are entered in the Render dashboard, never in the repo.
+services:
+  - type: web
+    name: stevie-notification-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      # Which subscriber list the app reads. Default = the bundled fake list.
+      # For real testers, upload team_test.csv as a Render "Secret File" and set
+      # this to its mounted path, e.g. /etc/secrets/team_test.csv
+      - key: SUBSCRIBERS_CSV
+        value: fixtures/sample_subscribers.csv
+
+      # --- Secrets: set these in the Render dashboard (not stored in the repo) ---
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_WABA_ID
+        sync: false

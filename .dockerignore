@@ -1,0 +1,15 @@
+# Keep the image small and free of secrets/PII.
+.git
+.gitignore
+.venv
+venv
+node_modules
+**/__pycache__
+*.pyc
+.pytest_cache
+.env
+.env.example
+# Real subscriber data + DB stay OUT of the image (provide via Render Secret File / env).
+data/
+# Docs not needed at runtime.
+docs/
