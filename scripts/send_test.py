@@ -1,14 +1,13 @@
-"""Send ONE real message via Twilio to prove your credentials work.
+"""Send ONE real SMS via Twilio to prove your credentials work.
+(WhatsApp is sent via the Meta Cloud API — see scripts/sendTemplate.js.)
 
 Prereqs (see console steps in the chat / README):
   * .env has TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN filled in.
   * DRY_RUN=false in .env.
-  * For SMS  : TWILIO_SMS_FROM is your Twilio number, and --to is a *verified* number (trial).
-  * For WhatsApp: TWILIO_WHATSAPP_FROM is the sandbox number, and --to has *joined* the sandbox.
+  * TWILIO_SMS_FROM is your Twilio number, and --to is a *verified* number (trial).
 
 Usage:
-  python -m scripts.send_test --channel sms      --to +1XXXXXXXXXX
-  python -m scripts.send_test --channel whatsapp --to +91XXXXXXXXXX
+  python -m scripts.send_test --to +1XXXXXXXXXX
 """
 from __future__ import annotations
 
@@ -16,13 +15,13 @@ import argparse
 
 from app.config import settings
 from app.core.phone import validate
-from app.core.router import SMS, WHATSAPP
+from app.core.router import SMS
 from app.core import sender
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--channel", choices=[SMS, WHATSAPP], required=True)
+    p.add_argument("--channel", choices=[SMS], default=SMS)
     p.add_argument("--to", required=True, help="recipient in E.164, e.g. +12025550101")
     p.add_argument("--body", default="Hello from the Stevie Awards broadcast tool test.")
     args = p.parse_args()

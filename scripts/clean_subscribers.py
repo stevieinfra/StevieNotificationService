@@ -1,4 +1,4 @@
-"""Clean the raw CloudCannon/Stevie SMS subscriber export into useful data.
+"""Clean the raw Stevie SMS subscriber export into useful data.
 
 What it does
 ------------

@@ -15,20 +15,22 @@ const { createMessenger, renderTemplate } = require("../src/messaging");
 const DRY_RUN =
   /^true$/i.test(process.env.DRY_RUN || "") || process.argv.includes("--dry");
 
-// Live sends need all four; dry-run only needs a recipient to display.
-const REQUIRED = DRY_RUN
-  ? ["TEST_TO_NUMBER"]
-  : ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER", "TEST_TO_NUMBER"];
+const has = (k) => process.env[k] && process.env[k].trim();
 
 function requireEnv() {
-  const missing = REQUIRED.filter((k) => !process.env[k] || !process.env[k].trim());
+  if (DRY_RUN) return; // dry-run needs nothing (falls back to a sample recipient)
+
+  const missing = ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"].filter(
+    (k) => !has(k)
+  );
+  // A recipient can come from TEST_RECIPIENTS, TEST_TO_NUMBER, or ANIRUDH_TO_NUMBER.
+  if (!has("TEST_RECIPIENTS") && !has("TEST_TO_NUMBER") && !has("ANIRUDH_TO_NUMBER")) {
+    missing.push("TEST_RECIPIENTS (or TEST_TO_NUMBER)");
+  }
   if (missing.length) {
-    // In dry-run, a missing recipient is non-fatal — fall back to a sample number.
-    if (DRY_RUN && missing.length === 1 && missing[0] === "TEST_TO_NUMBER") return;
     console.error("\n  Cannot run the SMS test — missing environment variables:");
     missing.forEach((k) => console.error(`    - ${k}`));
-    console.error("\n  Fix: copy .env.example to .env and fill in the values:");
-    console.error("      cp .env.example .env");
+    console.error("\n  Fix: set them in .env (copy .env.example if needed),");
     console.error("  ...or run the no-credentials dry run:  npm run test:sms:dry\n");
     process.exit(1);
   }
@@ -44,35 +46,68 @@ async function main() {
     dryRun: DRY_RUN,
   });
 
-  const to = process.env.TEST_TO_NUMBER || (DRY_RUN ? "+15551234567" : undefined);
-  console.log(`Mode: ${DRY_RUN ? "DRY_RUN (nothing is actually sent)" : "LIVE"}`);
-  console.log(`Sending test messages to ${to} ...\n`);
-
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const name = process.env.TEST_NAME || "Vennela";
+  // Random 10–15 MINUTE gap between message ROUNDS.
+  const randGapMs = () => (10 + Math.floor(Math.random() * 6)) * 60 * 1000;
 
-  // The 4 templates to test, in order.
-  const MESSAGES = [
+  // Recipients. Preferred: a TEST_RECIPIENTS list in .env, comma-separated
+  // "Name:+number" pairs, e.g.  Vennela:+9183...,Anirudh Thadem:+1404...,Sarah:+4479...
+  // Falls back to the individual TEST_TO_NUMBER / ANIRUDH_TO_NUMBER keys.
+  let recipients = [];
+  if (process.env.TEST_RECIPIENTS && process.env.TEST_RECIPIENTS.trim()) {
+    recipients = process.env.TEST_RECIPIENTS.split(",")
+      .map((pair) => {
+        const i = pair.lastIndexOf(":"); // number has no ":", so split on the last one
+        return { name: pair.slice(0, i).trim(), to: pair.slice(i + 1).trim() };
+      })
+      .filter((r) => r.name && r.to);
+  } else {
+    recipients = [
+      { name: process.env.TEST_NAME || "Vennela", to: process.env.TEST_TO_NUMBER },
+      { name: "Anirudh Thadem", to: process.env.ANIRUDH_TO_NUMBER },
+    ].filter((r) => r.to && r.to.trim());
+  }
+  if (!recipients.length && DRY_RUN) {
+    recipients = [{ name: "Vennela", to: "+15551234567" }];
+  }
+
+  // The 3 templates each recipient receives (personalized with their name).
+  // To use the deadline reminder instead of finalist, swap the last line.
+  const templatesFor = (name) => [
     { label: "generalized ", key: "winners2026.generalized", vars: {} },
     { label: "personalized", key: "winners2026.personalized", vars: { name } },
-    { label: "deadline    ", key: "deadline.reminder", vars: { name, deadline: "Feb 28, 2026" } },
     { label: "finalist    ", key: "finalist.announcement", vars: { name, category: "Innovation in Technology" } },
+    // { label: "deadline    ", key: "deadline.reminder", vars: { name, deadline: "Feb 28, 2026" } },
   ];
 
-  // 2.5 min between messages on a live run (avoids carrier filtering); no wait in dry-run.
-  const GAP_MS = DRY_RUN ? 0 : 150000;
+  const rounds = templatesFor("x").length; // messages per recipient (3)
+
+  console.log(`Mode: ${DRY_RUN ? "DRY_RUN (nothing is actually sent)" : "LIVE"}`);
+  console.log(`Recipients: ${recipients.map((r) => `${r.name} (${r.to})`).join(", ")}`);
+  console.log(
+    `Plan: ${rounds} rounds. In each round ALL recipients get the same message ` +
+      `together, then a random 10-15 min gap before the next round.\n`
+  );
+
   let allOk = true;
+  // Round = one message to everyone (sent together), then wait before the next.
+  for (let r = 0; r < rounds; r++) {
+    console.log(`--- Round ${r + 1} of ${rounds} ---`);
+    for (const person of recipients) {
+      const m = templatesFor(person.name)[r];
+      const body = renderTemplate(m.key, m.vars);
+      const res = await messenger.sendMessage("sms", person.to, { body });
+      console.log(
+        `  [${person.name}] ${m.label}:`,
+        res.success ? `OK sid=${res.messageId}` : `FAILED ${res.error}`
+      );
+      if (!res.success) allOk = false;
+    }
 
-  for (let i = 0; i < MESSAGES.length; i++) {
-    const m = MESSAGES[i];
-    const body = renderTemplate(m.key, m.vars);
-    const res = await messenger.sendMessage("sms", to, { body });
-    console.log(`${m.label}:`, res.success ? `OK sid=${res.messageId}` : `FAILED ${res.error}`);
-    if (!res.success) allOk = false;
-
-    if (i < MESSAGES.length - 1) {
-      console.log(`  ...waiting ${GAP_MS / 1000}s before the next message...\n`);
-      await sleep(GAP_MS);
+    if (r < rounds - 1 && !DRY_RUN) {
+      const g = randGapMs();
+      console.log(`\n  ...waiting ${Math.round(g / 60000)} min before the next round...\n`);
+      await sleep(g);
     }
   }
 

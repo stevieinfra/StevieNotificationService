@@ -39,17 +39,17 @@ def main() -> None:
                     data={"MessageSid": sid, "MessageStatus": "delivered"})
         print(f"[status] {sid}  after ={_status_of(sid)}")
 
-        # 2) Inbound STOP from Meera (India / WhatsApp) -> opt out
+        # 2) Inbound STOP (SMS) -> opt out
         phone = "+919812345303"
         print(f"\n[STOP] {phone} opt-in before (sms, wa) = {_optin_state(phone)}")
         r = client.post(f"{BASE}/webhooks/twilio/inbound",
-                        data={"From": f"whatsapp:{phone}", "Body": "STOP"})
+                        data={"From": phone, "Body": "STOP"})
         print(f"[STOP] reply TwiML: {r.text}")
         print(f"[STOP] {phone} opt-in after  (sms, wa) = {_optin_state(phone)}")
 
         # 3) Inbound START -> opt back in
         r = client.post(f"{BASE}/webhooks/twilio/inbound",
-                        data={"From": f"whatsapp:{phone}", "Body": "START"})
+                        data={"From": phone, "Body": "START"})
         print(f"\n[START] reply TwiML: {r.text}")
         print(f"[START] {phone} opt-in after (sms, wa) = {_optin_state(phone)}")
 

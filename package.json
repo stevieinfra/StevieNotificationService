@@ -6,6 +6,11 @@
   "scripts": {
     "test:sms": "node scripts/testSms.js",
     "test:sms:dry": "node scripts/testSms.js --dry",
+    "wa:send": "node scripts/sendTemplate.js",
+    "wa:send:dry": "node scripts/sendTemplate.js --dry",
+    "wa:all": "node scripts/sendAllTemplates.js",
+    "wa:all:dry": "node scripts/sendAllTemplates.js --dry",
+    "broadcast": "node scripts/broadcast.js",
     "templates": "node scripts/previewTemplates.js"
   },
   "dependencies": {

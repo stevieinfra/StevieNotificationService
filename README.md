@@ -1,71 +1,73 @@
-# Stevie Broadcast Tool
+# Stevie Notification Tool
 
-Sends Stevie Awards updates to subscribers, routing by **country**:
-**US → SMS, everywhere else → WhatsApp**. Content is authored in CloudCannon;
-**publishing** a `type: broadcast` item fires a webhook that triggers the send.
+Sends Stevie Awards notifications to subscribers, routing by **country**:
+**US → SMS (Twilio)**, **everywhere else → WhatsApp (Meta Cloud API)**.
+Messages are filtered by program (topic), reminder type, and consent.
 
-One provider (**Twilio**) handles both channels.
+## Two parts
 
-## Pipeline
+**1. Messaging + broadcast (Node)** — the piece that actually sends.
+- `src/messaging/` — channel-agnostic sender facade
+  - `twilioSmsSender.js` — SMS via Twilio
+  - `whatsAppSender.js` — WhatsApp via Meta Cloud API (approved templates)
+  - `messenger.js` — `sendMessage(channel, to, payload)`, builds each sender lazily
+- `src/subscribers.js` — load + filter the subscriber list (topic / reminder / consent)
+- `scripts/broadcast.js` — **the MVP**: filter a list and send over the right channel
 
-```
-CloudCannon publish
-   └─ POST /webhooks/cloudcannon   (verify secret, type==broadcast)
-        └─ parse + save broadcasts row (deterministic id => dedupe)
-             └─ broadcaster: load subscribers
-                  └─ router: country=="US" ? SMS : WhatsApp   (skip if no opt-in)
-                       └─ quiet-hours check (per timezone)
-                            └─ sender: Twilio SMS / whatsapp: prefix
-                                 └─ deliveries row (message_sid, status)
+**2. Schedule form (Python / FastAPI)** — the audience-picker UI.
+- `app/schedule.py` — a "Schedule New SMS" form: compose a message, pick program +
+  reminder + consent, **preview** exactly who would receive it, then **Send**
+  (dry run by default; tick "Send for real" to go live). The send step runs the
+  Node broadcast engine (`scripts/broadcast.js`) under the hood.
+- `app/webhooks/twilio.py` — Twilio delivery-status + STOP/HELP inbound handling.
 
-Twilio delivery status  -> POST /webhooks/twilio/status  (update row; retry failures w/ backoff)
-Inbound STOP/HELP/START -> POST /webhooks/twilio/inbound  (update consent, auto-reply)
-```
+> Note: the Node side is what has been proven end-to-end (real SMS + WhatsApp
+> delivered). The Python `app/core/*` sender is an earlier implementation kept for
+> the form/tests; the two stacks should eventually converge.
 
-## Data model
-
-- **subscribers**(phone, country, name, sms_opt_in, whatsapp_opt_in, language, timezone, active)
-- **broadcasts**(id, title, body, link, audience, created_at)
-- **deliveries**(id, broadcast_id, subscriber_id, channel, message_sid, status, reason, attempts, updated_at)
-  - `UNIQUE(broadcast_id, subscriber_id)` enforces **never double-send**.
-
-## Quick start (sandbox, no live Twilio needed)
+## Quick start
 
 ```bash
-python -m venv .venv && . .venv/Scripts/activate    # Windows: .venv\Scripts\Activate.ps1
+# --- Node (sending) ---
+npm install
+cp .env.example .env          # fill in Twilio + WhatsApp creds; DRY_RUN safe by default
+
+# Broadcast (DRY RUN — shows who + what, sends nothing):
+BROADCAST_TOPIC=IBA BROADCAST_REMINDER="First Reminder" npm run broadcast
+# Actually send:
+BROADCAST_TOPIC=IBA npm run broadcast -- --send
+
+# Single WhatsApp template test:
+WA_TEMPLATE=stevie_entry_confirmation WA_VARS="Vennela|American Business Awards|https://stevieawards.com" npm run wa:send
+
+# --- Python (schedule form) ---
 pip install -r requirements.txt
-cp .env.example .env                                 # DRY_RUN=true by default
-
-python -m scripts.seed_subscribers                   # 20 test subs (US + intl)
-uvicorn app.main:app --reload                        # in one terminal
-python -m scripts.simulate_publish --duplicate       # in another: fire (twice => dedupe)
-pytest -q                                            # unit + e2e tests
+SUBSCRIBERS_CSV=fixtures/sample_subscribers.csv uvicorn app.main:app --reload
+# open http://localhost:8000/schedule
 ```
 
-In `DRY_RUN=true`, sends are logged with a fake `DRYRUN-...` SID — the whole flow
-works without Twilio credentials.
+`fixtures/sample_subscribers.csv` is a small **fake** list for safe testing. Point
+`SUBSCRIBERS_CSV` at the real cleaned list when ready.
 
-## Going live (after the sandbox flow is proven)
+## WhatsApp templates
 
-1. Set real `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM`, and set `DRY_RUN=false`.
-2. Expose the app publicly (ngrok) and set `PUBLIC_BASE_URL`; point Twilio's
-   status callback + inbound webhook at `/webhooks/twilio/status` and `/webhooks/twilio/inbound`.
-3. **WhatsApp**: join the Twilio WhatsApp sandbox, then before production create a
-   Meta-**approved template** and set `TWILIO_WHATSAPP_TEMPLATE_SID`. Business-initiated
-   WhatsApp requires the template **and** prior opt-in.
-4. **US SMS**: register **A2P 10DLC** or carriers will filter your traffic.
-5. Verify **STOP/HELP** replies and consent persistence on both channels.
+Business-initiated WhatsApp requires **pre-approved templates** (created in Meta's
+WhatsApp Manager). One template with variables (`{{1}} {{2}} …`) serves all
+programs/recipients. Categories matter:
+- **Utility** (confirmations, status) → delivers reliably.
+- **Marketing** (promotional reminders) → Meta frequency-caps per user; delivers
+  best to engaged/opted-in users.
 
-## Compliance built in
+## Consent & compliance
 
-- Consent stored per channel; **STOP/HELP/START** honored automatically (TCPA).
-- Idempotency at both the broadcast and per-recipient level.
-- **Quiet hours** enforced per recipient timezone (deferred, not dropped).
-- Country is **stored**, never inferred from the dial code (US and Canada share +1).
-- Retry with exponential backoff on failed deliveries (`POST /admin/retry`).
+- Only **verified / opted-in** subscribers are targeted by default.
+- SMS: STOP/HELP handled via the Twilio inbound webhook.
+- Country is **stored**, never inferred from the dial code.
 
-## Not wired up yet (deliberately deferred)
+## Deferred to production (business/admin)
 
-Real recipient list, 10DLC registration, approved WhatsApp templates, and a task
-queue/scheduler for large fan-out + automatic retry cron.
-```
+- **Permanent WhatsApp token** (System User) — the temporary token expires hourly.
+- **Verified WhatsApp sender** — currently a Meta test number (max 5 recipients),
+  and messages show as the sending business, not "Stevie Awards".
+- **A2P 10DLC** registration for US SMS at scale.
+- Real subscriber list + a scheduler for large fan-out.

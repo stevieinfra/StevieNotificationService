@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Form, Response
 
 from app.compliance import consent
-from app.core.router import WHATSAPP
 from app.db import get_conn
 
 router = APIRouter(prefix="/webhooks/twilio", tags=["twilio"])
@@ -41,16 +40,15 @@ def _twiml(message: str | None) -> Response:
 
 @router.post("/inbound")
 async def inbound(
-    From: str = Form(...),           # e.g. '+15551234567' or 'whatsapp:+91...'
+    From: str = Form(...),           # e.g. '+15551234567'
     Body: str = Form(default=""),
 ):
     """Handle STOP/HELP/START. Update our consent record and auto-reply."""
     action = consent.classify_inbound(Body)
 
-    # Normalize 'whatsapp:+..' -> channel + bare E.164
-    channel = WHATSAPP if From.startswith("whatsapp:") else "sms"
-    phone = From.replace("whatsapp:", "")
-    col = consent.opt_in_column(channel)
+    # Twilio inbound here is SMS (WhatsApp is handled via the Meta Cloud API).
+    phone = From
+    col = consent.opt_in_column("sms")
 
     if action == "stop":
         with get_conn() as conn:

@@ -1,0 +1,12 @@
+id,name,country,country_code,national_number,phone_e164,channel,number_confirmed,opt_out,active,topics,reminder_types,subscribe_time
+1,Alice Morgan,US,1,2025550101,+12025550101,sms,yes,no,1,IBA;ABA,All Reminders,2026-01-10 09:00:00
+2,Bob Carter,US,1,2025550102,+12025550102,sms,no,no,1,IBA,First Reminder;Second Reminder,2026-01-11 10:00:00
+3,Chloe Bennett,GB,44,7400123456,+447400123456,whatsapp,yes,no,1,IBA;GSA,First Reminder,2026-01-12 11:00:00
+4,Diego Alvarez,ES,34,600123456,+34600123456,whatsapp,yes,no,1,IBA,All Reminders,2026-01-13 12:00:00
+5,Emma Schmidt,DE,49,15112345678,+4915112345678,whatsapp,no,no,1,GSA,First Reminder,2026-01-14 13:00:00
+6,Farah Nasser,AE,971,501234567,+971501234567,whatsapp,yes,no,1,MENA,Second Reminder,2026-01-15 14:00:00
+7,Grace Liu,SG,65,81234567,+6581234567,whatsapp,yes,no,1,APSA;IBA,First Reminder;Final Reminder,2026-01-16 15:00:00
+8,Henry Adams,US,1,2025550108,+12025550108,sms,yes,yes,0,IBA;ABA,All Reminders,2026-01-17 16:00:00
+9,Isla Fraser,GB,44,7400987654,+447400987654,whatsapp,no,no,1,WOMEN;IBA,Third Reminder,2026-01-18 17:00:00
+10,Jack Turner,US,1,2025550110,+12025550110,sms,yes,no,1,SALES,First Reminder,2026-01-19 18:00:00
+11,Test User,IN,91,9000000011,+919000000011,sms,yes,no,1,IBA;ABA,All Reminders,2026-01-20 09:00:00

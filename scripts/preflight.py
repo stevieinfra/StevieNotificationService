@@ -20,8 +20,7 @@ def main() -> None:
     print(f"  TWILIO_ACCOUNT_SID    = {_mask(settings.twilio_account_sid)}  "
           f"{'OK' if settings.twilio_account_sid.startswith('AC') else '<-- should start with AC'}")
     print(f"  TWILIO_AUTH_TOKEN     = {_mask(settings.twilio_auth_token)}")
-    print(f"  TWILIO_WHATSAPP_FROM  = {settings.twilio_whatsapp_from}")
-    print(f"  TWILIO_SMS_FROM       = {settings.twilio_sms_from or '(empty - only needed for SMS)'}")
+    print(f"  TWILIO_SMS_FROM       = {settings.twilio_sms_from or '(empty - required for SMS)'}")
     print(f"  QUIET_HOURS           = {settings.quiet_hours_start}:00 - {settings.quiet_hours_end}:00 "
           f"(recipient local time; sends outside are deferred)")
     print(f"  PUBLIC_BASE_URL       = {settings.public_base_url}")
@@ -30,7 +29,7 @@ def main() -> None:
              and settings.twilio_account_sid.startswith("AC")
              and bool(settings.twilio_auth_token))
     print()
-    print("READY for a real WhatsApp send." if ready
+    print("READY for a real SMS send." if ready
           else "NOT ready - fix the items marked above.")
 
 

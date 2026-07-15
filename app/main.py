@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app import schedule
 from app.core.retry import retry_failed
 from app.db import init_db
-from app.webhooks import cloudcannon, twilio
+from app.webhooks import twilio
 
 app = FastAPI(title="Stevie Broadcast Tool")
 
@@ -18,8 +19,8 @@ def _startup() -> None:
     init_db()
 
 
-app.include_router(cloudcannon.router)
 app.include_router(twilio.router)
+app.include_router(schedule.router)
 
 
 @app.get("/health")
