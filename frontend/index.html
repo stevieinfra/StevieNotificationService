@@ -86,8 +86,8 @@
 
     <div id="formScreen">
     <label class="field-label" for="body">Message *</label>
-    <textarea id="body" maxlength="200" placeholder="Type your message. Use {name}, {program}, {link} to personalize."></textarea>
-    <div class="hint">Used for SMS recipients. WhatsApp recipients receive the approved template. An opt-out line is added automatically.</div>
+    <textarea id="body" maxlength="640" rows="6" placeholder="Type your message. Use {name}, {program}, {link} to personalize."></textarea>
+    <div class="hint">Used for SMS recipients. WhatsApp recipients receive the approved template. An opt-out line is added automatically. Longer SMS = more segments (higher cost).</div>
 
     <label class="field-label">Programs * <span class="muted">(who receives it)</span></label>
     <div class="box" id="topics">Loading…</div>
