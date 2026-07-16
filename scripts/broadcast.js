@@ -40,6 +40,16 @@ const WA_TEMPLATE = process.env.WA_TEMPLATE || "stevie_entry_reminder";
 const WA_LANG = process.env.WA_LANG || "en";
 const GAP_MS = (Number(process.env.GAP_SEC) || 3) * 1000;
 
+// Each approved template has a specific number of body variables. Map the template
+// name -> the ordered values it expects, so we never send the wrong count (Meta errors).
+const WA_TEMPLATE_PARAMS = {
+  stevie_entry_confirmation: (name, program, link) => [name, program, link],
+  stevie_entry_incomplete: (name, program, link) => [name, program, link],
+  stevie_entry_reminder: (name, program, link) => [name, program, link],
+  stevie_winner_notification: (name, program, link) => [program, link], // no name
+  stevie_entry_received: (name, program, link) => [name, program], // link is in the button
+};
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function fail(msg) {
@@ -102,22 +112,15 @@ async function main() {
         }
         res = await messenger.sendMessage("sms", r.phone_e164, { body });
       } else {
-        res = await messenger.sendMessage("whatsapp", r.phone_e164, {
-          template: {
-            name: WA_TEMPLATE,
-            language: WA_LANG,
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  { type: "text", text: name },
-                  { type: "text", text: programName },
-                  { type: "text", text: LINK },
-                ],
-              },
-            ],
-          },
-        });
+        const build = WA_TEMPLATE_PARAMS[WA_TEMPLATE] || ((n, p, l) => [n, p, l]);
+        const values = build(name, programName, LINK);
+        const template = { name: WA_TEMPLATE, language: WA_LANG };
+        if (values.length) {
+          template.components = [
+            { type: "body", parameters: values.map((text) => ({ type: "text", text })) },
+          ];
+        }
+        res = await messenger.sendMessage("whatsapp", r.phone_e164, { template });
       }
     } catch (err) {
       res = { success: false, error: err.message };

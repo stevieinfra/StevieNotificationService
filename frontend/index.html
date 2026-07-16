@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stevie Awards — Schedule Notification</title>
+<style>
+  :root {
+    --bg: #eceef1;
+    --card: #ffffff;
+    --ink: #23303e;        /* slate/navy text */
+    --ink-soft: #5a6b7b;
+    --line: #d7dde3;
+    --accent: #3f5b7a;     /* muted steel-blue */
+    --accent-dark: #33495f;
+    --field: #fbfcfd;
+    --chip: #eef2f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55; padding: 40px 16px;
+  }
+  .wrap { max-width: 700px; margin: 0 auto; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 34px 36px; box-shadow: 0 1px 3px rgba(35,48,62,.06);
+  }
+  .brand { font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+           color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+  h1 { margin: 0 0 4px; font-size: 26px; color: var(--ink); font-weight: 650; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 26px; }
+  label.field-label { display: block; font-weight: 600; font-size: 14px;
+                      margin: 22px 0 7px; color: var(--ink); }
+  .hint { color: var(--ink-soft); font-size: 12.5px; margin-top: 6px; }
+  textarea, select, input[type=date], input[type=time] {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--field); color: var(--ink);
+    font: inherit; font-size: 14px; outline: none;
+  }
+  textarea:focus, select:focus, input:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 84px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; background: var(--field);
+         padding: 10px 12px; max-height: 190px; overflow: auto; }
+  .opt { display: flex; align-items: center; gap: 9px; padding: 5px 0;
+         font-size: 14px; font-weight: 400; cursor: pointer; }
+  .opt input { width: auto; margin: 0; accent-color: var(--accent); }
+  .row { display: flex; gap: 16px; } .row > div { flex: 1; }
+  .btn {
+    background: var(--accent); color: #fff; border: 0; padding: 12px 22px;
+    border-radius: 8px; font: inherit; font-size: 14.5px; font-weight: 600;
+    cursor: pointer; margin-top: 28px;
+  }
+  .btn:hover { background: var(--accent-dark); }
+  .btn.secondary { background: #4a5b6b; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .divider { height: 1px; background: var(--line); margin: 28px 0; }
+  .stat { display: inline-block; background: var(--chip); border: 1px solid var(--line);
+          border-radius: 8px; padding: 9px 15px; margin: 6px 9px 0 0; font-size: 14px; }
+  .stat b { color: var(--accent-dark); }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12.5px; }
+  th, td { border: 1px solid var(--line); padding: 8px 9px; text-align: left; vertical-align: top; }
+  th { background: var(--chip); color: var(--ink); font-weight: 600; }
+  pre { background: #23303e; color: #e6edf3; padding: 14px; border-radius: 8px;
+        overflow: auto; font-size: 12px; line-height: 1.5; }
+  .note { background: #f4f0e6; border: 1px solid #e4dcc4; color: #5c5330;
+          padding: 12px 14px; border-radius: 8px; font-size: 13.5px; margin-top: 20px; }
+  .msg-err { color: #9a3434; font-size: 14px; margin-top: 14px; }
+  .checkline { display: flex; align-items: center; gap: 9px; margin-top: 20px;
+               font-size: 14px; font-weight: 500; }
+  .checkline input { accent-color: var(--accent); }
+  .hidden { display: none; }
+  .muted { color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="brand">Stevie Awards</div>
+    <h1>Schedule a Notification</h1>
+    <p class="sub">Send a reminder to subscribers by program and reminder stage. US numbers receive SMS; international receive WhatsApp.</p>
+
+    <label class="field-label" for="body">Message *</label>
+    <textarea id="body" maxlength="200" placeholder="Type your message. Use {name}, {program}, {link} to personalize."></textarea>
+    <div class="hint">Used for SMS recipients. WhatsApp recipients receive the approved template. An opt-out line is added automatically.</div>
+
+    <label class="field-label">Programs * <span class="muted">(who receives it)</span></label>
+    <div class="box" id="topics">Loading…</div>
+
+    <label class="field-label" for="reminder">Reminder stage *</label>
+    <select id="reminder"></select>
+
+    <div class="row">
+      <div><label class="field-label" for="date">Date</label><input type="date" id="date" /></div>
+      <div><label class="field-label" for="time">Time</label><input type="time" id="time" /></div>
+    </div>
+
+    <label class="field-label">Include unverified numbers *</label>
+    <label class="opt"><input type="radio" name="inc" value="no" checked /> No — verified / consented only (recommended)</label>
+    <label class="opt"><input type="radio" name="inc" value="yes" /> Yes</label>
+
+    <button class="btn" id="previewBtn">Preview audience</button>
+    <div id="err" class="msg-err hidden"></div>
+
+    <!-- Preview + send -->
+    <div id="result" class="hidden">
+      <div class="divider"></div>
+      <h1 style="font-size:19px">Preview</h1>
+      <div id="stats"></div>
+      <h3 style="font-size:14px;margin:20px 0 4px">Sample messages</h3>
+      <table id="samples"><thead><tr><th>Name</th><th>Number</th><th>Channel</th><th>Message</th></tr></thead><tbody></tbody></table>
+
+      <label class="checkline"><input type="checkbox" id="live" /> Send for real (live) — leave unchecked for a safe dry run</label>
+      <button class="btn secondary" id="sendBtn">Send now</button>
+      <div class="note">Dry run logs what would send without sending. Check “Send for real” to actually deliver.</div>
+    </div>
+
+    <!-- Send output -->
+    <div id="sendResult" class="hidden">
+      <div class="divider"></div>
+      <h1 id="sendTitle" style="font-size:19px">Result</h1>
+      <pre id="output"></pre>
+    </div>
+  </div>
+  <p class="sub" style="text-align:center;margin-top:18px">Stevie Awards — internal notification tool</p>
+</div>
+
+<script>
+  // ── Backend API base. For local dev this is localhost; for deploy, set it to
+  //    your Railway/Render backend URL (e.g. https://stevie-api.up.railway.app).
+  const API_BASE = "http://localhost:8000";
+
+  const $ = (id) => document.getElementById(id);
+
+  function selectedTopics() {
+    return [...document.querySelectorAll('#topics input:checked')].map((i) => i.value);
+  }
+  function campaign() {
+    return {
+      body: $("body").value,
+      topics: selectedTopics(),
+      reminder_type: $("reminder").value,
+      include_unverified: document.querySelector('input[name=inc]:checked').value === "yes",
+    };
+  }
+  function showErr(msg) { const e = $("err"); e.textContent = msg; e.classList.remove("hidden"); }
+  function clearErr() { $("err").classList.add("hidden"); }
+
+  // Load topics + reminders
+  fetch(API_BASE + "/api/config").then((r) => r.json()).then((cfg) => {
+    $("topics").innerHTML = cfg.topics.map((t) =>
+      `<label class="opt"><input type="checkbox" value="${t.code}"> ${t.label}</label>`).join("");
+    $("reminder").innerHTML = cfg.reminders.map((r) => `<option>${r}</option>`).join("");
+  }).catch(() => { $("topics").textContent = "Could not reach the backend API."; });
+
+  // Preview
+  $("previewBtn").onclick = async () => {
+    clearErr();
+    const c = campaign();
+    if (!c.body.trim()) return showErr("Please enter a message.");
+    if (!c.topics.length) return showErr("Please select at least one program.");
+    $("previewBtn").disabled = true; $("previewBtn").textContent = "Loading…";
+    try {
+      const res = await fetch(API_BASE + "/api/preview", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(c),
+      }).then((r) => r.json());
+      if (res.error) return showErr(res.error);
+      $("stats").innerHTML =
+        `<span class="stat"><b>${res.matched}</b> recipients</span>` +
+        `<span class="stat">SMS (US): <b>${res.sms}</b></span>` +
+        `<span class="stat">WhatsApp (intl): <b>${res.whatsapp}</b></span>`;
+      const tb = document.querySelector("#samples tbody");
+      tb.innerHTML = res.samples.length
+        ? res.samples.map((s) =>
+            `<tr><td>${s.name}</td><td>${s.phone}</td><td>${s.channel}</td><td>${s.message}</td></tr>`).join("")
+        : `<tr><td colspan="4">No recipients matched.</td></tr>`;
+      $("result").classList.remove("hidden");
+      $("sendResult").classList.add("hidden");
+    } catch (e) { showErr("Request failed: " + e.message); }
+    finally { $("previewBtn").disabled = false; $("previewBtn").textContent = "Preview audience"; }
+  };
+
+  // Send
+  $("sendBtn").onclick = async () => {
+    const c = campaign();
+    c.live = $("live").checked;
+    $("sendBtn").disabled = true; $("sendBtn").textContent = "Sending…";
+    try {
+      const res = await fetch(API_BASE + "/api/send", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(c),
+      }).then((r) => r.json());
+      $("sendTitle").textContent = res.live ? "Live — messages were sent" : "Dry run — nothing was sent";
+      $("output").textContent = res.output || "(no output)";
+      $("sendResult").classList.remove("hidden");
+      $("sendResult").scrollIntoView({ behavior: "smooth" });
+    } catch (e) { showErr("Send failed: " + e.message); }
+    finally { $("sendBtn").disabled = false; $("sendBtn").textContent = "Send now"; }
+  };
+</script>
+</body>
+</html>

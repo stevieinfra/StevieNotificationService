@@ -4,14 +4,27 @@ Run:  uvicorn app.main:app --reload
 """
 from __future__ import annotations
 
-from fastapi import FastAPI
+import os
 
-from app import schedule
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app import api, schedule
 from app.core.retry import retry_failed
 from app.db import init_db
 from app.webhooks import twilio
 
 app = FastAPI(title="Stevie Broadcast Tool")
+
+# Allow the static frontend (Vercel) to call this API from another origin.
+# Set FRONTEND_ORIGIN to the Vercel URL in production; "*" is fine for testing.
+_origins = os.environ.get("FRONTEND_ORIGIN", "*").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _origins],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -21,6 +34,7 @@ def _startup() -> None:
 
 app.include_router(twilio.router)
 app.include_router(schedule.router)
+app.include_router(api.router)
 
 
 @app.get("/health")
