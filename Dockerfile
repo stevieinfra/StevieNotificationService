@@ -24,7 +24,10 @@ RUN npm ci --omit=dev
 # --- App source ---
 COPY . .
 
-# Render provides $PORT at runtime; default to 8000 locally.
+# Host provides $PORT at runtime; default to 8000 locally.
 ENV PORT=8000
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# If SUBSCRIBERS_CSV_CONTENT is set (e.g. on Railway, which has no secret files),
+# write it to a file and point SUBSCRIBERS_CSV at it — keeps real numbers out of
+# the repo/image. Then start the server.
+CMD ["sh", "-c", "if [ -n \"$SUBSCRIBERS_CSV_CONTENT\" ]; then printf '%s' \"$SUBSCRIBERS_CSV_CONTENT\" > /tmp/subscribers.csv && export SUBSCRIBERS_CSV=/tmp/subscribers.csv; fi; uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
