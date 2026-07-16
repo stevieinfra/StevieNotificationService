@@ -50,6 +50,7 @@ def preview(c: Campaign):
         return {"error": f"Subscriber list not found at {settings.subscribers_csv}."}
 
     matched = filter_recipients(rows, c.topics, c.reminder_type, c.include_unverified)
+    # Show up to 200 recipients in the preview (avoids rendering huge lists).
     samples = [
         {
             "name": r.get("name") or "(no name)",
@@ -57,7 +58,7 @@ def preview(c: Campaign):
             "channel": r.get("channel", ""),
             "message": render_body(c.body, r.get("name", "")),
         }
-        for r in matched[:5]
+        for r in matched[:200]
     ]
     return {
         "matched": len(matched),

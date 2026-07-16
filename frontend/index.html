@@ -72,6 +72,9 @@
   .checkline input { accent-color: var(--accent); }
   .hidden { display: none; }
   .muted { color: var(--ink-soft); }
+  .back { color: var(--accent); font-size: 13.5px; font-weight: 600;
+          text-decoration: none; cursor: pointer; }
+  .back:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -81,6 +84,7 @@
     <h1>Schedule a Notification</h1>
     <p class="sub">Send a reminder to subscribers by program and reminder stage. US numbers receive SMS; international receive WhatsApp.</p>
 
+    <div id="formScreen">
     <label class="field-label" for="body">Message *</label>
     <textarea id="body" maxlength="200" placeholder="Type your message. Use {name}, {program}, {link} to personalize."></textarea>
     <div class="hint">Used for SMS recipients. WhatsApp recipients receive the approved template. An opt-out line is added automatically.</div>
@@ -102,13 +106,14 @@
 
     <button class="btn" id="previewBtn">Preview audience</button>
     <div id="err" class="msg-err hidden"></div>
+    </div><!-- /formScreen -->
 
-    <!-- Preview + send -->
+    <!-- Preview screen -->
     <div id="result" class="hidden">
-      <div class="divider"></div>
-      <h1 style="font-size:19px">Preview</h1>
-      <div id="stats"></div>
-      <h3 style="font-size:14px;margin:20px 0 4px">Sample messages</h3>
+      <a class="back" id="backToForm">&larr; Edit</a>
+      <div id="stats" style="margin-top:14px"></div>
+      <h3 id="samplesTitle" style="font-size:14px;margin:22px 0 4px">Recipients</h3>
+      <div class="hint" style="margin:0 0 6px">Message column shows the SMS text; WhatsApp recipients receive the approved template.</div>
       <table id="samples"><thead><tr><th>Name</th><th>Number</th><th>Channel</th><th>Message</th></tr></thead><tbody></tbody></table>
 
       <label class="checkline"><input type="checkbox" id="live" /> Send for real (live) — leave unchecked for a safe dry run</label>
@@ -116,10 +121,10 @@
       <div class="note">Dry run logs what would send without sending. Check “Send for real” to actually deliver.</div>
     </div>
 
-    <!-- Send output -->
+    <!-- Send result screen -->
     <div id="sendResult" class="hidden">
-      <div class="divider"></div>
-      <h1 id="sendTitle" style="font-size:19px">Result</h1>
+      <a class="back" id="backToStart">&larr; Schedule another</a>
+      <h1 id="sendTitle" style="font-size:19px;margin-top:14px">Result</h1>
       <pre id="output"></pre>
     </div>
   </div>
@@ -176,10 +181,31 @@
         ? res.samples.map((s) =>
             `<tr><td>${s.name}</td><td>${s.phone}</td><td>${s.channel}</td><td>${s.message}</td></tr>`).join("")
         : `<tr><td colspan="4">No recipients matched.</td></tr>`;
+      $("samplesTitle").textContent =
+        res.samples.length < res.matched
+          ? `Recipients (showing ${res.samples.length} of ${res.matched})`
+          : `Recipients (${res.matched})`;
+      // Switch to the preview "page"
+      $("formScreen").classList.add("hidden");
       $("result").classList.remove("hidden");
       $("sendResult").classList.add("hidden");
+      window.scrollTo({ top: 0 });
     } catch (e) { showErr("Request failed: " + e.message); }
     finally { $("previewBtn").disabled = false; $("previewBtn").textContent = "Preview audience"; }
+  };
+
+  // Back to the form from the preview
+  $("backToForm").onclick = () => {
+    $("result").classList.add("hidden");
+    $("formScreen").classList.remove("hidden");
+    window.scrollTo({ top: 0 });
+  };
+  // Start over from the send result
+  $("backToStart").onclick = () => {
+    $("sendResult").classList.add("hidden");
+    $("result").classList.add("hidden");
+    $("formScreen").classList.remove("hidden");
+    window.scrollTo({ top: 0 });
   };
 
   // Send
@@ -194,8 +220,9 @@
       }).then((r) => r.json());
       $("sendTitle").textContent = res.live ? "Live — messages were sent" : "Dry run — nothing was sent";
       $("output").textContent = res.output || "(no output)";
+      $("result").classList.add("hidden");
       $("sendResult").classList.remove("hidden");
-      $("sendResult").scrollIntoView({ behavior: "smooth" });
+      window.scrollTo({ top: 0 });
     } catch (e) { showErr("Send failed: " + e.message); }
     finally { $("sendBtn").disabled = false; $("sendBtn").textContent = "Send now"; }
   };
