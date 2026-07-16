@@ -132,9 +132,9 @@
 </div>
 
 <script>
-  // ── Backend API base. For local dev this is localhost; for deploy, set it to
-  //    your Railway/Render backend URL (e.g. https://stevie-api.up.railway.app).
-  const API_BASE = "http://localhost:8000";
+  // ── Backend API base. Points at the Railway backend in production.
+  //    For local dev, temporarily change this to http://localhost:8000.
+  const API_BASE = "https://stevie-notification-service-production.up.railway.app";
 
   const $ = (id) => document.getElementById(id);
 
